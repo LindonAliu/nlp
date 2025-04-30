@@ -36,10 +36,26 @@ ndarray-linalg = { version = "0.16", features = ["openblas-static"] }
 
 ## Dataset
 
-- Dataset file: `90minFootballTransferNewsNLP.csv`
-- Format: CSV with columns (`title`, `date`, `link`, `content`)
+### Article Files Structure
 
-Place this file in the root directory of the project.
+The dataset consists of individual article files stored in the `articles` directory:
+
+- Each article is stored in a separate text file (article_001.txt, article_002.txt, etc.)
+- File format:
+  - Line 1: Title
+  - Line 2: Date
+  - Line 3: Link
+  - Line 4+: Content
+
+#### Converting CSV to Individual Files
+
+If you have the original CSV dataset, you can convert it to individual article files using the `csv_to_files` utility:
+
+```sh
+cargo run --release --bin csv_to_files
+```
+
+This will create an `articles` directory containing all articles as separate text files.
 
 ## How to Build
 
@@ -54,7 +70,7 @@ cargo build --release
 Execute the binary with Cargo:
 
 ```sh
-cargo run --release
+cargo run --release --bin nlp
 ```
 
 ### Example
@@ -96,7 +112,7 @@ Typical build & query times (on Ryzen 5900X):
 
 | Step              | Time (approx.) |
 | ----------------- | -------------- |
-| CSV Parsing       | ~2s            |
+| File Reading      | ~2s            |
 | TF-IDF & indexing | ~2-3s          |
 | SVD computation   | ~10-15s        |
 | Query projection  | <1ms           |

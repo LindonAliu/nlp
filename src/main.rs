@@ -1,6 +1,5 @@
 //! Boolean filter + LSI rerank for 90min transfer news
 
-use csv::ReaderBuilder;
 use regex::Regex;
 use sprs::{CsMat, TriMat};
 use std::collections::{HashMap, HashSet};
@@ -14,7 +13,7 @@ use nalgebra_sparse::{CooMatrix, CsrMatrix};
 use svdlibrs::svd_dim;
 
 /* ------------------------------------------------------------------ */
-const CSV_PATH: &str = "90minFootballTransferNewsNLP.csv";
+const ARTICLES_DIR: &str = "articles";
 const K_LSI: usize = 100;
 const TOP_K: usize = 10;
 
@@ -22,6 +21,7 @@ const MIN_DF: usize = 1;
 const MAX_DF_RATIO: f64 = 0.5;
 /* ------------------------------------------------------------------ */
 
+#[allow(dead_code)]
 #[derive(Debug)]
 struct Document {
     title: String,
@@ -30,20 +30,45 @@ struct Document {
     content: String,
 }
 
-/* ---------------- CSV ----------------------------- */
+/* ---------------- File reading ----------------------------- */
 
-fn read_csv(path: &str) -> Result<Vec<Document>, Box<dyn Error>> {
-    let mut rdr = ReaderBuilder::new().has_headers(true).from_path(path)?;
+fn read_articles(dir_path: &str) -> Result<Vec<Document>, Box<dyn Error>> {
     let mut docs = Vec::new();
-    for rec in rdr.records() {
-        let r = rec?;
+    let entries = std::fs::read_dir(dir_path)?;
+
+    for entry in entries {
+        let entry = entry?;
+        let path = entry.path();
+
+        // Skip if not a file
+        if !path.is_file() {
+            continue;
+        }
+
+        // Read file content
+        let content = std::fs::read_to_string(&path)?;
+        let lines: Vec<&str> = content.lines().collect();
+
+        // Skip if file doesn't have at least 4 lines
+        if lines.len() < 4 {
+            eprintln!("Skipping file {:?} - not enough lines", path);
+            continue;
+        }
+
+        // Extract document fields
+        let title = lines[0].to_string();
+        let date = lines[1].to_string();
+        let link = lines[2].to_string();
+        let content = lines[3..].join("\n");
+
         docs.push(Document {
-            title: r.get(0).unwrap_or("").to_owned(),
-            date: r.get(1).unwrap_or("").to_owned(),
-            link: r.get(2).unwrap_or("").to_owned(),
-            content: r.get(3).unwrap_or("").to_owned(),
+            title,
+            date,
+            link,
+            content,
         });
     }
+
     Ok(docs)
 }
 
@@ -266,8 +291,8 @@ fn top_k_cosine_hits(
 /* ------------------------------ main ------------- */
 
 fn main() -> Result<(), Box<dyn Error>> {
-    /* 1. read */
-    let docs = read_csv(CSV_PATH)?;
+    /* 1. read articles from directory */
+    let docs = read_articles(ARTICLES_DIR)?;
     println!("Docs: {}", docs.len());
 
     /* 2. TF-IDF */
